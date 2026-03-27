@@ -19,7 +19,7 @@ def get_ball_image():
 
 
 # =============================
-# STATIC FULL PITCH
+# STATIC SHOT MAP (FIXED)
 # =============================
 def shot_map_two_teams(events, team1, team2, color1, color2):
     pitch = Pitch()
@@ -27,7 +27,7 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
 
     ball_img = get_ball_image()
 
-    def jitter(arr, scale=0.3):
+    def jitter(arr, scale=0.25):
         return arr + np.random.uniform(-scale, scale, size=len(arr))
 
     def plot_team(team, color):
@@ -38,7 +38,7 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
         ].copy()
 
         if shots.empty:
-            return
+            return 0
 
         shots["x"] = shots["location"].apply(lambda x: x[0])
         shots["y"] = shots["location"].apply(lambda x: x[1])
@@ -47,7 +47,9 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
         y = jitter(shots["y"])
 
         xg = shots["shot.statsbomb_xg"].fillna(0.01)
-        sizes = (xg + 0.03) * 2200
+
+        # ✅ FIXED SIZE (balanced)
+        sizes = (xg + 0.02) * 1400
 
         goals = shots["shot.outcome.name"] == "Goal"
 
@@ -58,28 +60,39 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
             color=color,
             alpha=0.35,
             edgecolors="black",
-            linewidth=0.6,
-            label=team
+            linewidth=0.6
         )
 
+        # Goals
         for xi, yi in zip(x[goals], y[goals]):
             if ball_img is not None:
-                image = OffsetImage(ball_img, zoom=0.035)
+                image = OffsetImage(ball_img, zoom=0.03)
                 ab = AnnotationBbox(image, (xi, yi), frameon=False)
                 ax.add_artist(ab)
 
-    plot_team(team1, color1)
-    plot_team(team2, color2)
+        return xg.sum()
 
-    handles, labels = ax.get_legend_handles_labels()
-    unique = dict(zip(labels, handles))
-    ax.legend(unique.values(), unique.keys(), loc="upper right")
+    # Plot teams + get xG totals
+    xg1 = plot_team(team1, color1)
+    xg2 = plot_team(team2, color2)
+
+    # =============================
+    # CUSTOM LEGEND (xG bubbles)
+    # =============================
+    legend_x = 90
+    legend_y = 10
+
+    ax.scatter(legend_x, legend_y, s=300, color=color1, alpha=0.5)
+    ax.text(legend_x + 2, legend_y, f"{team1} ({xg1:.2f} xG)", va='center')
+
+    ax.scatter(legend_x, legend_y + 6, s=300, color=color2, alpha=0.5)
+    ax.text(legend_x + 2, legend_y + 6, f"{team2} ({xg2:.2f} xG)", va='center')
 
     return fig
 
 
 # =============================
-# INTERACTIVE VERSION
+# INTERACTIVE MAP (FIXED)
 # =============================
 def shot_map_interactive(events, team1, team2, color1, color2):
 
@@ -110,9 +123,10 @@ def shot_map_interactive(events, team1, team2, color1, color2):
             y=team_shots["y"],
             mode="markers",
             marker=dict(
-                size=team_shots["shot.statsbomb_xg"].fillna(0.01) * 50,
+                # ✅ FIXED SIZE (bigger)
+                size=team_shots["shot.statsbomb_xg"].fillna(0.01) * 60,
                 color=color,
-                opacity=0.7,
+                opacity=0.75,
                 line=dict(width=1, color="black")
             ),
             name=team,
@@ -123,7 +137,21 @@ def shot_map_interactive(events, team1, team2, color1, color2):
     plot_team(team1, color1)
     plot_team(team2, color2)
 
+    # =============================
+    # FULL PITCH (RESTORED)
+    # =============================
+    shapes = [
+        dict(type="rect", x0=0, y0=0, x1=120, y1=80, line=dict(color="black")),
+        dict(type="line", x0=60, y0=0, x1=60, y1=80, line=dict(color="black")),
+        dict(type="circle", x0=50, y0=30, x1=70, y1=50, line=dict(color="black")),
+        dict(type="rect", x0=0, y0=18, x1=18, y1=62, line=dict(color="black")),
+        dict(type="rect", x0=102, y0=18, x1=120, y1=62, line=dict(color="black")),
+        dict(type="rect", x0=0, y0=30, x1=6, y1=50, line=dict(color="black")),
+        dict(type="rect", x0=114, y0=30, x1=120, y1=50, line=dict(color="black")),
+    ]
+
     fig.update_layout(
+        shapes=shapes,
         xaxis=dict(range=[0, 120], visible=False),
         yaxis=dict(range=[80, 0], visible=False),
         plot_bgcolor="white",

@@ -3,7 +3,7 @@ from loaders.competitions import load_competitions
 from loaders.matches import load_matches
 from utils.cache import cached_load_events
 from analytics.xg import team_xg
-from visuals.pitch import shot_map
+from visuals.pitch import shot_map_two_teams
 
 # -----------------------------
 # PAGE CONFIG
@@ -54,9 +54,6 @@ except Exception:
     st.error("Failed to load matches data")
     st.stop()
 
-# -----------------------------
-# FIX: HANDLE NESTED JSON
-# -----------------------------
 def get_match_label(row):
     home = row.get("home_team", {}).get("home_team_name", "Unknown")
     away = row.get("away_team", {}).get("away_team_name", "Unknown")
@@ -76,7 +73,7 @@ match_id = match_row["match_id"]
 st.subheader(match_choice)
 
 # -----------------------------
-# LOAD EVENTS (WITH SPINNER)
+# LOAD EVENTS
 # -----------------------------
 try:
     with st.spinner("Loading match data..."):
@@ -88,8 +85,20 @@ except Exception:
 # -----------------------------
 # TEAM SELECTION
 # -----------------------------
-teams = events["team.name"].dropna().unique()
-team = st.sidebar.selectbox("Team", teams)
+teams = list(events["team.name"].dropna().unique())
+
+team1 = st.sidebar.selectbox("Team 1", teams, index=0)
+team2 = st.sidebar.selectbox(
+    "Team 2", 
+    teams, 
+    index=1 if len(teams) > 1 else 0
+)
+
+# -----------------------------
+# COLOR PICKERS
+# -----------------------------
+color1 = st.sidebar.color_picker("Team 1 Color", "#1f77b4")
+color2 = st.sidebar.color_picker("Team 2 Color", "#d62728")
 
 # -----------------------------
 # TABS
@@ -103,23 +112,26 @@ with tab1:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("📊 Key Metrics")
-        xg = team_xg(events, team)
-        st.metric("Expected Goals (xG)", round(xg, 2))
+        st.subheader("📊 xG Comparison")
+
+        xg1 = team_xg(events, team1)
+        xg2 = team_xg(events, team2)
+
+        st.metric(f"{team1} xG", round(xg1, 2))
+        st.metric(f"{team2} xG", round(xg2, 2))
 
     with col2:
         st.subheader("ℹ️ Match Info")
-        st.write(f"Team: {team}")
         st.write(f"Match ID: {match_id}")
 
 # -----------------------------
 # SHOTS TAB
 # -----------------------------
 with tab2:
-    st.subheader("🔥 Shot Map")
+    st.subheader("🔥 Shot Map Comparison")
 
     try:
-        fig = shot_map(events, team)
+        fig = shot_map_two_teams(events, team1, team2, color1, color2)
         st.pyplot(fig)
     except Exception:
         st.error("Failed to render shot map")

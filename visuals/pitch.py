@@ -2,12 +2,14 @@ from mplsoccer import Pitch
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from pathlib import Path
 
 # -----------------------------
-# LOAD FOOTBALL IMAGE
+# LOAD LOCAL IMAGE
 # -----------------------------
 def get_ball_image():
-    return plt.imread("https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Soccerball.svg/120px-Soccerball.svg.png")
+    img_path = Path("assets/football.png")
+    return plt.imread(img_path)
 
 # -----------------------------
 # MAIN FUNCTION
@@ -18,9 +20,6 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
 
     ball_img = get_ball_image()
 
-    # -----------------------------
-    # HELPER FUNCTION
-    # -----------------------------
     def plot_team_shots(team, color):
         shots = events[
             (events["type.name"] == "Shot") &
@@ -39,9 +38,7 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
 
         goals = shots["shot.outcome.name"] == "Goal"
 
-        # -----------------------------
-        # MISSES (BUBBLES)
-        # -----------------------------
+        # MISSES
         pitch.scatter(
             x[~goals],
             y[~goals],
@@ -54,23 +51,16 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
             label=f"{team} Miss"
         )
 
-        # -----------------------------
         # GOALS (IMAGE ICON)
-        # -----------------------------
         for xi, yi, si in zip(x[goals], y[goals], sizes[goals]):
             image = OffsetImage(ball_img, zoom=max(0.02, si / 4000))
             ab = AnnotationBbox(image, (xi, yi), frameon=False)
             ax.add_artist(ab)
 
-    # -----------------------------
-    # PLOT BOTH TEAMS
-    # -----------------------------
     plot_team_shots(team1, color1)
     plot_team_shots(team2, color2)
 
-    # -----------------------------
-    # LEGEND CLEANUP
-    # -----------------------------
+    # CLEAN LEGEND
     handles, labels = ax.get_legend_handles_labels()
     unique = dict(zip(labels, handles))
     ax.legend(unique.values(), unique.keys(), loc="upper right")

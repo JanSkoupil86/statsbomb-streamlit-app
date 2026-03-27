@@ -13,13 +13,12 @@ def get_ball_image():
         img_path = Path("assets/football.png")
         if img_path.exists():
             return plt.imread(img_path)
-        else:
-            return None
+        return None
     except Exception:
         return None
 
 # -----------------------------
-# TINT IMAGE (team color)
+# TINT IMAGE
 # -----------------------------
 def tint_image(img, color):
     if img is None:
@@ -43,10 +42,7 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
 
     base_img = get_ball_image()
 
-    # -----------------------------
-    # JITTER FUNCTION
-    # -----------------------------
-    def jitter(arr, scale=0.4):
+    def jitter(arr, scale=0.35):
         return arr + np.random.uniform(-scale, scale, size=len(arr))
 
     def plot_team(team, color_hex):
@@ -68,7 +64,7 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
         y = jitter(y)
 
         xg = shots.get("shot.statsbomb_xg", 0).fillna(0.01)
-        sizes = xg * 900
+        sizes = xg * 850
 
         goals = shots["shot.outcome.name"] == "Goal"
 
@@ -94,14 +90,19 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
 
         for xi, yi in zip(x[goals], y[goals]):
             if tinted_ball is not None:
-                image = OffsetImage(tinted_ball, zoom=0.035)
+                image = OffsetImage(tinted_ball, zoom=0.032)
                 ab = AnnotationBbox(image, (xi, yi), frameon=False)
                 ax.add_artist(ab)
             else:
-                # Fallback if image fails
-                ax.scatter(xi, yi, color=color_hex, edgecolor="black", s=80, zorder=5)
+                ax.scatter(
+                    xi, yi,
+                    color=color_hex,
+                    edgecolor="black",
+                    s=70,
+                    zorder=5
+                )
 
-    # Plot both teams
+    # Plot teams
     plot_team(team1, color1)
     plot_team(team2, color2)
 
@@ -113,13 +114,14 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
     ax.legend(unique.values(), unique.keys(), loc="upper right")
 
     # -----------------------------
-    # EXPLANATION TEXT
+    # CLEAN EXPLANATION (NO EMOJI)
     # -----------------------------
     ax.text(
-        60, 5,
-        "Bubble size = xG | ⚽ = Goal",
+        60, 3,
+        "Bubble size = xG | Goals shown as icons",
         ha="center",
-        fontsize=10
+        fontsize=9,
+        color="gray"
     )
 
     return fig

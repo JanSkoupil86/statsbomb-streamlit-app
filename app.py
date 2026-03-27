@@ -89,8 +89,8 @@ teams = list(events["team.name"].dropna().unique())
 
 team1 = st.sidebar.selectbox("Team 1", teams, index=0)
 team2 = st.sidebar.selectbox(
-    "Team 2", 
-    teams, 
+    "Team 2",
+    teams,
     index=1 if len(teams) > 1 else 0
 )
 
@@ -128,7 +128,7 @@ with tab1:
 # SHOTS TAB
 # -----------------------------
 with tab2:
-    st.subheader("🔥 Shot Map Comparison")
+    st.subheader("🔥 Shot Map (xG Weighted + Goals Highlighted)")
 
     try:
         fig = shot_map_two_teams(events, team1, team2, color1, color2)

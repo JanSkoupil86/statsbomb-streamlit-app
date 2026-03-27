@@ -54,6 +54,9 @@ except Exception:
     st.error("Failed to load matches data")
     st.stop()
 
+# -----------------------------
+# FIX: NESTED JSON MATCH LABEL
+# -----------------------------
 def get_match_label(row):
     home = row.get("home_team", {}).get("home_team_name", "Unknown")
     away = row.get("away_team", {}).get("away_team_name", "Unknown")
@@ -94,6 +97,11 @@ team2 = st.sidebar.selectbox(
     index=1 if len(teams) > 1 else 0
 )
 
+# Prevent selecting same team twice
+if team1 == team2:
+    st.warning("Please select two different teams.")
+    st.stop()
+
 # -----------------------------
 # COLOR PICKERS
 # -----------------------------
@@ -123,12 +131,13 @@ with tab1:
     with col2:
         st.subheader("ℹ️ Match Info")
         st.write(f"Match ID: {match_id}")
+        st.write(f"Teams: {team1} vs {team2}")
 
 # -----------------------------
 # SHOTS TAB
 # -----------------------------
 with tab2:
-    st.subheader("🔥 Shot Map (xG Weighted + Goals Highlighted)")
+    st.subheader("🔥 Shot Map (xG-weighted, goals highlighted)")
 
     try:
         fig = shot_map_two_teams(events, team1, team2, color1, color2)

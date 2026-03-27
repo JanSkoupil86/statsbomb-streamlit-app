@@ -1,16 +1,10 @@
-import json
+import requests
 import pandas as pd
-from pathlib import Path
-
-DATA_PATH = Path(r"C:\Users\Scoby\Downloads\open-data-master\data")
 
 def load_events(match_id):
-    file_path = DATA_PATH / "events" / f"{match_id}.json"
-
-    if not file_path.exists():
-        raise FileNotFoundError(f"{file_path} not found")
-
-    with open(file_path, encoding="utf-8") as f:
-        data = json.load(f)
-
+    url = f"https://raw.githubusercontent.com/statsbomb/open-data/master/data/events/{match_id}.json"
+    
+    r = requests.get(url)
+    data = r.json()
+    
     return pd.json_normalize(data)

@@ -21,15 +21,13 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
         x = shots["location"].apply(lambda loc: loc[0])
         y = shots["location"].apply(lambda loc: loc[1])
 
-        # xG scaling (bubble size)
         xg = shots.get("shot.statsbomb_xg", 0)
-        sizes = xg.fillna(0.01) * 1200  # scale factor
+        sizes = xg.fillna(0.01) * 1200
 
-        # Goal detection
         goals = shots["shot.outcome.name"] == "Goal"
 
         # -----------------------------
-        # PLOT MISSES
+        # MISSES (BUBBLES)
         # -----------------------------
         pitch.scatter(
             x[~goals],
@@ -40,23 +38,21 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
             alpha=0.4,
             edgecolors="black",
             linewidth=0.5,
-            label=f"{team} (Miss)"
+            label=f"{team} Miss"
         )
 
         # -----------------------------
-        # PLOT GOALS
+        # GOALS (⚽ ICON)
         # -----------------------------
-        pitch.scatter(
-            x[goals],
-            y[goals],
-            ax=ax,
-            s=sizes[goals],
-            color=color,
-            edgecolors="gold",
-            linewidth=2,
-            marker="o",
-            label=f"{team} (Goal)"
-        )
+        for xi, yi, si in zip(x[goals], y[goals], sizes[goals]):
+            ax.text(
+                xi,
+                yi,
+                "⚽",
+                fontsize=max(10, si / 80),  # scale icon size
+                ha="center",
+                va="center"
+            )
 
     # -----------------------------
     # PLOT BOTH TEAMS
@@ -65,7 +61,7 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
     plot_team_shots(team2, color2)
 
     # -----------------------------
-    # LEGEND CLEANUP
+    # CLEAN LEGEND
     # -----------------------------
     handles, labels = ax.get_legend_handles_labels()
     unique = dict(zip(labels, handles))

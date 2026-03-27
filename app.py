@@ -3,7 +3,10 @@ from loaders.competitions import load_competitions
 from loaders.matches import load_matches
 from utils.cache import cached_load_events
 from analytics.xg import team_xg
+
+# Static + Interactive visuals
 from visuals.pitch import shot_map_two_teams
+from visuals.pitch import shot_map_interactive
 
 # -----------------------------
 # PAGE CONFIG
@@ -55,7 +58,7 @@ except Exception:
     st.stop()
 
 # -----------------------------
-# FIX: NESTED JSON MATCH LABEL
+# MATCH LABEL (nested JSON fix)
 # -----------------------------
 def get_match_label(row):
     home = row.get("home_team", {}).get("home_team_name", "Unknown")
@@ -97,7 +100,6 @@ team2 = st.sidebar.selectbox(
     index=1 if len(teams) > 1 else 0
 )
 
-# Prevent selecting same team twice
 if team1 == team2:
     st.warning("Please select two different teams.")
     st.stop()
@@ -111,7 +113,7 @@ color2 = st.sidebar.color_picker("Team 2 Color", "#d62728")
 # -----------------------------
 # TABS
 # -----------------------------
-tab1, tab2 = st.tabs(["Overview", "Shots"])
+tab1, tab2, tab3 = st.tabs(["Overview", "Shot Map", "Interactive"])
 
 # -----------------------------
 # OVERVIEW TAB
@@ -134,7 +136,7 @@ with tab1:
         st.write(f"Teams: {team1} vs {team2}")
 
 # -----------------------------
-# SHOTS TAB
+# STATIC SHOT MAP
 # -----------------------------
 with tab2:
     st.subheader("🔥 Shot Map (xG-weighted, goals highlighted)")
@@ -142,5 +144,17 @@ with tab2:
     try:
         fig = shot_map_two_teams(events, team1, team2, color1, color2)
         st.pyplot(fig)
-    except Exception:
-        st.error("Failed to render shot map")
+    except Exception as e:
+        st.error(f"Failed to render shot map: {e}")
+
+# -----------------------------
+# INTERACTIVE SHOT MAP
+# -----------------------------
+with tab3:
+    st.subheader("🖱️ Interactive Shot Map (hover for details)")
+
+    try:
+        fig = shot_map_interactive(events, team1, team2, color1, color2)
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.error(f"Failed to render interactive map: {e}")

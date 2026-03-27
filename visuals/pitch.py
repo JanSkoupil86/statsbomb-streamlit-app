@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 # =============================
-# STATIC VERSION (WITH ⚽ ICONS)
+# LOAD BALL IMAGE
 # =============================
 def get_ball_image():
     try:
@@ -18,37 +18,44 @@ def get_ball_image():
         return None
 
 
+# =============================
+# STATIC HALF-PITCH (BEST VISUAL)
+# =============================
 def shot_map_two_teams(events, team1, team2, color1, color2):
-    pitch = Pitch()
+    pitch = Pitch(half=True)
     fig, ax = pitch.draw()
 
     ball_img = get_ball_image()
-
-    def jitter(arr, scale=0.3):
-        return arr + np.random.uniform(-scale, scale, size=len(arr))
 
     def plot_team(team, color):
         shots = events[
             (events["type.name"] == "Shot") &
             (events["team.name"] == team) &
             (events["location"].notnull())
-        ]
+        ].copy()
 
         if shots.empty:
             return
 
-        x = shots["location"].apply(lambda x: x[0])
-        y = shots["location"].apply(lambda x: x[1])
+        # Extract coordinates
+        shots["x"] = shots["location"].apply(lambda x: x[0])
+        shots["y"] = shots["location"].apply(lambda x: x[1])
 
-        x = jitter(x)
-        y = jitter(y)
+        # Flip all shots to attacking direction
+        shots.loc[shots["x"] < 60, "x"] = 120 - shots["x"]
+        shots.loc[shots["y"] < 40, "y"] = 80 - shots["y"]
 
+        x = shots["x"]
+        y = shots["y"]
+
+        # xG sizing
         xg = shots["shot.statsbomb_xg"].fillna(0.01)
         sizes = xg * 900
 
+        # Identify goals
         goals = shots["shot.outcome.name"] == "Goal"
 
-        # Shots
+        # Plot all shots
         pitch.scatter(
             x, y,
             ax=ax,
@@ -60,10 +67,10 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
             label=team
         )
 
-        # Goals (⚽)
+        # Plot goals as ⚽ icons
         for xi, yi in zip(x[goals], y[goals]):
             if ball_img is not None:
-                image = OffsetImage(ball_img, zoom=0.03)
+                image = OffsetImage(ball_img, zoom=0.035)
                 ab = AnnotationBbox(image, (xi, yi), frameon=False)
                 ax.add_artist(ab)
 
@@ -75,16 +82,21 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
 
 
 # =============================
-# INTERACTIVE VERSION
+# INTERACTIVE HALF-PITCH (PLOTLY)
 # =============================
 def shot_map_interactive(events, team1, team2, color1, color2):
 
     shots = events[events["type.name"] == "Shot"].copy()
 
+    # Extract coordinates safely
     shots["x"] = shots["location"].apply(lambda x: x[0] if isinstance(x, list) else None)
     shots["y"] = shots["location"].apply(lambda x: x[1] if isinstance(x, list) else None)
 
     shots = shots.dropna(subset=["x", "y"])
+
+    # Flip shots to attacking direction
+    shots.loc[shots["x"] < 60, "x"] = 120 - shots["x"]
+    shots.loc[shots["y"] < 40, "y"] = 80 - shots["y"]
 
     fig = go.Figure()
 
@@ -106,7 +118,7 @@ def shot_map_interactive(events, team1, team2, color1, color2):
             y=team_shots["y"],
             mode="markers",
             marker=dict(
-                size=team_shots["shot.statsbomb_xg"].fillna(0.01) * 40,
+                size=team_shots["shot.statsbomb_xg"].fillna(0.01) * 50,
                 color=color,
                 opacity=0.7,
                 line=dict(width=1, color="black")
@@ -119,23 +131,30 @@ def shot_map_interactive(events, team1, team2, color1, color2):
     plot_team(team1, color1)
     plot_team(team2, color2)
 
-    # Full pitch
+    # -----------------------------
+    # HALF PITCH SHAPES
+    # -----------------------------
     shapes = [
-        dict(type="rect", x0=0, y0=0, x1=120, y1=80, line=dict(color="black")),
-        dict(type="line", x0=60, y0=0, x1=60, y1=80, line=dict(color="black")),
-        dict(type="circle", x0=50, y0=30, x1=70, y1=50, line=dict(color="black")),
-        dict(type="rect", x0=0, y0=18, x1=18, y1=62, line=dict(color="black")),
+        # Pitch boundary
+        dict(type="rect", x0=60, y0=0, x1=120, y1=80, line=dict(color="black")),
+        # Penalty box
         dict(type="rect", x0=102, y0=18, x1=120, y1=62, line=dict(color="black")),
-        dict(type="rect", x0=0, y0=30, x1=6, y1=50, line=dict(color="black")),
+        # 6-yard box
         dict(type="rect", x0=114, y0=30, x1=120, y1=50, line=dict(color="black")),
+        # Penalty spot
+        dict(type="circle", x0=109-0.5, y0=40-0.5, x1=109+0.5, y1=40+0.5, fillcolor="black"),
+        # Arc
+        dict(type="circle", x0=100, y0=30, x1=120, y1=50, line=dict(color="black")),
     ]
 
     fig.update_layout(
         shapes=shapes,
-        xaxis=dict(range=[0, 120], visible=False),
+        xaxis=dict(range=[60, 120], visible=False),
         yaxis=dict(range=[80, 0], visible=False),
         plot_bgcolor="white",
-        height=600
+        paper_bgcolor="white",
+        height=600,
+        showlegend=True
     )
 
     return fig

@@ -3,21 +3,31 @@ import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from pathlib import Path
 import numpy as np
+import matplotlib.colors as mcolors
 
 # -----------------------------
-# LOAD IMAGE
+# LOAD IMAGE SAFELY
 # -----------------------------
 def get_ball_image():
-    return plt.imread(Path("assets/football.png"))
+    try:
+        img_path = Path("assets/football.png")
+        if img_path.exists():
+            return plt.imread(img_path)
+        else:
+            return None
+    except Exception:
+        return None
 
 # -----------------------------
-# COLORIZE IMAGE (key trick)
+# TINT IMAGE (team color)
 # -----------------------------
 def tint_image(img, color):
-    # Normalize image
-    img = img / 255 if img.max() > 1 else img.copy()
+    if img is None:
+        return None
 
+    img = img / 255 if img.max() > 1 else img.copy()
     tinted = img.copy()
+
     tinted[..., 0] *= color[0]
     tinted[..., 1] *= color[1]
     tinted[..., 2] *= color[2]
@@ -33,11 +43,14 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
 
     base_img = get_ball_image()
 
+    # -----------------------------
+    # JITTER FUNCTION
+    # -----------------------------
     def jitter(arr, scale=0.4):
         return arr + np.random.uniform(-scale, scale, size=len(arr))
 
     def plot_team(team, color_hex):
-        color = plt.colors.to_rgb(color_hex)
+        color = mcolors.to_rgb(color_hex)
 
         shots = events[
             (events["type.name"] == "Shot") &
@@ -75,14 +88,18 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
         )
 
         # -----------------------------
-        # GOALS (team-colored icons)
+        # GOALS (ICON OR FALLBACK)
         # -----------------------------
         tinted_ball = tint_image(base_img, color)
 
         for xi, yi in zip(x[goals], y[goals]):
-            image = OffsetImage(tinted_ball, zoom=0.035)
-            ab = AnnotationBbox(image, (xi, yi), frameon=False)
-            ax.add_artist(ab)
+            if tinted_ball is not None:
+                image = OffsetImage(tinted_ball, zoom=0.035)
+                ab = AnnotationBbox(image, (xi, yi), frameon=False)
+                ax.add_artist(ab)
+            else:
+                # Fallback if image fails
+                ax.scatter(xi, yi, color=color_hex, edgecolor="black", s=80, zorder=5)
 
     # Plot both teams
     plot_team(team1, color1)
@@ -94,5 +111,15 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
     handles, labels = ax.get_legend_handles_labels()
     unique = dict(zip(labels, handles))
     ax.legend(unique.values(), unique.keys(), loc="upper right")
+
+    # -----------------------------
+    # EXPLANATION TEXT
+    # -----------------------------
+    ax.text(
+        60, 5,
+        "Bubble size = xG | ⚽ = Goal",
+        ha="center",
+        fontsize=10
+    )
 
     return fig

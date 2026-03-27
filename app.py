@@ -5,13 +5,24 @@ from utils.cache import cached_load_events
 from analytics.xg import team_xg
 from visuals.pitch import shot_map
 
+# -----------------------------
+# PAGE CONFIG
+# -----------------------------
 st.set_page_config(layout="wide")
-st.title("⚽ StatsBomb Dashboard")
+st.title("⚽ StatsBomb Match Explorer")
 
-# Load competitions
-comps = load_competitions()
+# -----------------------------
+# LOAD COMPETITIONS
+# -----------------------------
+try:
+    comps = load_competitions()
+except Exception:
+    st.error("Failed to load competitions data")
+    st.stop()
 
-# Sidebar
+# -----------------------------
+# SIDEBAR FILTERS
+# -----------------------------
 st.sidebar.header("Filters")
 
 competition = st.sidebar.selectbox(
@@ -34,8 +45,14 @@ selected = comp_df[
 comp_id = selected["competition_id"].iloc[0]
 season_id = selected["season_id"].iloc[0]
 
-# Matches
-matches = load_matches(comp_id, season_id)
+# -----------------------------
+# LOAD MATCHES
+# -----------------------------
+try:
+    matches = load_matches(comp_id, season_id)
+except Exception:
+    st.error("Failed to load matches")
+    st.stop()
 
 match_labels = matches.apply(
     lambda x: f"{x['home_team.home_team_name']} vs {x['away_team.away_team_name']}",
@@ -44,23 +61,60 @@ match_labels = matches.apply(
 
 match_choice = st.sidebar.selectbox("Match", match_labels)
 
-match_row = matches.iloc[match_labels[match_labels == match_choice].index[0]]
+match_index = match_labels[match_labels == match_choice].index[0]
+match_row = matches.iloc[match_index]
 match_id = match_row["match_id"]
 
-# Events
-events = cached_load_events(match_id)
+# -----------------------------
+# DISPLAY MATCH TITLE
+# -----------------------------
+st.subheader(f"{match_choice}")
 
+# -----------------------------
+# LOAD EVENTS (WITH SPINNER)
+# -----------------------------
+try:
+    with st.spinner("Loading match data..."):
+        events = cached_load_events(match_id)
+except Exception:
+    st.error("Failed to load match events")
+    st.stop()
+
+# -----------------------------
+# TEAM SELECTION
+# -----------------------------
 teams = events["team.name"].dropna().unique()
 team = st.sidebar.selectbox("Team", teams)
 
-# Layout
-col1, col2 = st.columns(2)
+# -----------------------------
+# TABS
+# -----------------------------
+tab1, tab2 = st.tabs(["Overview", "Shots"])
 
-with col1:
-    st.subheader("xG")
-    st.metric("Expected Goals", round(team_xg(events, team), 2))
+# -----------------------------
+# OVERVIEW TAB
+# -----------------------------
+with tab1:
+    col1, col2 = st.columns(2)
 
-with col2:
-    st.subheader("Shot Map")
-    fig = shot_map(events, team)
-    st.pyplot(fig)
+    with col1:
+        st.subheader("📊 Key Metrics")
+        xg = team_xg(events, team)
+        st.metric("Expected Goals (xG)", round(xg, 2))
+
+    with col2:
+        st.subheader("ℹ️ Info")
+        st.write(f"Team: {team}")
+        st.write(f"Match ID: {match_id}")
+
+# -----------------------------
+# SHOTS TAB
+# -----------------------------
+with tab2:
+    st.subheader("🔥 Shot Map")
+
+    try:
+        fig = shot_map(events, team)
+        st.pyplot(fig)
+    except Exception:
+        st.error("Failed to render shot map")

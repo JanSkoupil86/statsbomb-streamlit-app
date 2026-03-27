@@ -1,8 +1,8 @@
-def team_xg(events, team_name):
+def team_xg(events, team):
     shots = events[events["type.name"] == "Shot"]
-    team_shots = shots[shots["team.name"] == team_name]
+    shots = shots[shots["team.name"] == team]
 
-    if "shot.statsbomb_xg" not in team_shots:
+    if "shot.statsbomb_xg" not in shots:
         return 0
 
-    return team_shots["shot.statsbomb_xg"].sum()
+    return shots["shot.statsbomb_xg"].sum()

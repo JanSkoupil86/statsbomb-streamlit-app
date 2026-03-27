@@ -4,9 +4,9 @@ from loaders.matches import load_matches
 from utils.cache import cached_load_events
 from analytics.xg import team_xg
 
-# Static + Interactive visuals
-from visuals.pitch import shot_map_two_teams
-from visuals.pitch import shot_map_interactive
+# IMPORTANT: both functions must exist in visuals/pitch.py
+from visuals.pitch import shot_map_two_teams, shot_map_interactive
+
 
 # -----------------------------
 # PAGE CONFIG
@@ -14,14 +14,16 @@ from visuals.pitch import shot_map_interactive
 st.set_page_config(layout="wide")
 st.title("⚽ StatsBomb Match Explorer")
 
+
 # -----------------------------
 # LOAD COMPETITIONS
 # -----------------------------
 try:
     comps = load_competitions()
-except Exception:
-    st.error("Failed to load competitions data")
+except Exception as e:
+    st.error(f"Failed to load competitions data: {e}")
     st.stop()
+
 
 # -----------------------------
 # SIDEBAR FILTERS
@@ -48,22 +50,25 @@ selected = comp_df[
 comp_id = selected["competition_id"].iloc[0]
 season_id = selected["season_id"].iloc[0]
 
+
 # -----------------------------
 # LOAD MATCHES
 # -----------------------------
 try:
     matches = load_matches(comp_id, season_id)
-except Exception:
-    st.error("Failed to load matches data")
+except Exception as e:
+    st.error(f"Failed to load matches data: {e}")
     st.stop()
 
+
 # -----------------------------
-# MATCH LABEL (nested JSON fix)
+# FIX MATCH LABEL (nested JSON)
 # -----------------------------
 def get_match_label(row):
     home = row.get("home_team", {}).get("home_team_name", "Unknown")
     away = row.get("away_team", {}).get("away_team_name", "Unknown")
     return f"{home} vs {away}"
+
 
 match_labels = matches.apply(get_match_label, axis=1)
 
@@ -73,10 +78,12 @@ match_index = match_labels[match_labels == match_choice].index[0]
 match_row = matches.iloc[match_index]
 match_id = match_row["match_id"]
 
+
 # -----------------------------
 # DISPLAY MATCH TITLE
 # -----------------------------
 st.subheader(match_choice)
+
 
 # -----------------------------
 # LOAD EVENTS
@@ -84,9 +91,10 @@ st.subheader(match_choice)
 try:
     with st.spinner("Loading match data..."):
         events = cached_load_events(match_id)
-except Exception:
-    st.error("Failed to load match events")
+except Exception as e:
+    st.error(f"Failed to load match events: {e}")
     st.stop()
+
 
 # -----------------------------
 # TEAM SELECTION
@@ -104,16 +112,19 @@ if team1 == team2:
     st.warning("Please select two different teams.")
     st.stop()
 
+
 # -----------------------------
 # COLOR PICKERS
 # -----------------------------
 color1 = st.sidebar.color_picker("Team 1 Color", "#1f77b4")
 color2 = st.sidebar.color_picker("Team 2 Color", "#d62728")
 
+
 # -----------------------------
 # TABS
 # -----------------------------
 tab1, tab2, tab3 = st.tabs(["Overview", "Shot Map", "Interactive"])
+
 
 # -----------------------------
 # OVERVIEW TAB
@@ -135,17 +146,19 @@ with tab1:
         st.write(f"Match ID: {match_id}")
         st.write(f"Teams: {team1} vs {team2}")
 
+
 # -----------------------------
 # STATIC SHOT MAP
 # -----------------------------
 with tab2:
-    st.subheader("🔥 Shot Map (xG-weighted, goals highlighted)")
+    st.subheader("🔥 Shot Map (full pitch, xG-weighted)")
 
     try:
         fig = shot_map_two_teams(events, team1, team2, color1, color2)
         st.pyplot(fig)
     except Exception as e:
         st.error(f"Failed to render shot map: {e}")
+
 
 # -----------------------------
 # INTERACTIVE SHOT MAP

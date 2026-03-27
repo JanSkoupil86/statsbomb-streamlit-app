@@ -19,7 +19,7 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
 
     ball_img = get_ball_image()
 
-    def jitter(arr, scale=0.5):
+    def jitter(arr, scale=0.4):
         return arr + np.random.uniform(-scale, scale, size=len(arr))
 
     def plot_team(team, color):
@@ -56,7 +56,7 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
             label=f"{team} Miss"
         )
 
-        # GOALS
+        # GOALS (⚽ icons)
         for xi, yi in zip(x[goals], y[goals]):
             image = OffsetImage(ball_img, zoom=0.03)
             ab = AnnotationBbox(image, (xi, yi), frameon=False)
@@ -67,27 +67,22 @@ def shot_map_two_teams(events, team1, team2, color1, color2):
     plot_team(team2, color2)
 
     # -----------------------------
-    # LEGEND FIX
+    # CLEAN LEGEND
     # -----------------------------
     handles, labels = ax.get_legend_handles_labels()
     unique = dict(zip(labels, handles))
 
-    legend_elements = list(unique.values())
-    legend_labels = list(unique.keys())
+    ax.legend(unique.values(), unique.keys(), loc="upper right")
 
-    # Add goal legend manually (circle marker instead of emoji)
-    goal_marker = plt.Line2D(
-        [0], [0],
-        marker='o',
-        color='black',
-        linestyle='None',
-        markersize=8,
-        label='Goal'
+    # -----------------------------
+    # ADD TEXT EXPLANATION
+    # -----------------------------
+    ax.text(
+        60, 5,
+        "⚽ = Goal | Bubble size = xG",
+        ha="center",
+        fontsize=10,
+        color="black"
     )
-
-    legend_elements.append(goal_marker)
-    legend_labels.append("Goal")
-
-    ax.legend(legend_elements, legend_labels, loc="upper right")
 
     return fig

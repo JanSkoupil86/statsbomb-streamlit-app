@@ -1,8 +1,13 @@
 import json
 import pandas as pd
+from pathlib import Path
+
+DATA_PATH = Path(r"C:\Users\Scoby\Downloads\open-data-master\data")
 
 def load_events(match_id):
-    with open(f"data/events/{match_id}.json") as f:
+    file_path = DATA_PATH / "events" / f"{match_id}.json"
+
+    with open(file_path, encoding="utf-8") as f:
         data = json.load(f)
-    df = pd.json_normalize(data)
-    return df
+
+    return pd.json_normalize(data)

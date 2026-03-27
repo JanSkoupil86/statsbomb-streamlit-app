@@ -1,6 +1,83 @@
-def shot_map_interactive(events, team1, team2, color1, color2):
+import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+from mplsoccer import Pitch
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from pathlib import Path
+import numpy as np
 
-    import plotly.graph_objects as go
+# =============================
+# STATIC VERSION (WITH ⚽ ICONS)
+# =============================
+def get_ball_image():
+    try:
+        img_path = Path("assets/football.png")
+        if img_path.exists():
+            return plt.imread(img_path)
+        return None
+    except:
+        return None
+
+
+def shot_map_two_teams(events, team1, team2, color1, color2):
+    pitch = Pitch()
+    fig, ax = pitch.draw()
+
+    ball_img = get_ball_image()
+
+    def jitter(arr, scale=0.3):
+        return arr + np.random.uniform(-scale, scale, size=len(arr))
+
+    def plot_team(team, color):
+        shots = events[
+            (events["type.name"] == "Shot") &
+            (events["team.name"] == team) &
+            (events["location"].notnull())
+        ]
+
+        if shots.empty:
+            return
+
+        x = shots["location"].apply(lambda x: x[0])
+        y = shots["location"].apply(lambda x: x[1])
+
+        x = jitter(x)
+        y = jitter(y)
+
+        xg = shots["shot.statsbomb_xg"].fillna(0.01)
+        sizes = xg * 900
+
+        goals = shots["shot.outcome.name"] == "Goal"
+
+        # Shots
+        pitch.scatter(
+            x, y,
+            ax=ax,
+            s=sizes,
+            color=color,
+            alpha=0.3,
+            edgecolors="black",
+            linewidth=0.5,
+            label=team
+        )
+
+        # Goals (⚽)
+        for xi, yi in zip(x[goals], y[goals]):
+            if ball_img is not None:
+                image = OffsetImage(ball_img, zoom=0.03)
+                ab = AnnotationBbox(image, (xi, yi), frameon=False)
+                ax.add_artist(ab)
+
+    plot_team(team1, color1)
+    plot_team(team2, color2)
+
+    ax.legend(loc="upper right")
+    return fig
+
+
+# =============================
+# INTERACTIVE VERSION
+# =============================
+def shot_map_interactive(events, team1, team2, color1, color2):
 
     shots = events[events["type.name"] == "Shot"].copy()
 
@@ -42,49 +119,23 @@ def shot_map_interactive(events, team1, team2, color1, color2):
     plot_team(team1, color1)
     plot_team(team2, color2)
 
-    # -----------------------------
-    # FULL PITCH SHAPES
-    # -----------------------------
-    shapes = []
+    # Full pitch
+    shapes = [
+        dict(type="rect", x0=0, y0=0, x1=120, y1=80, line=dict(color="black")),
+        dict(type="line", x0=60, y0=0, x1=60, y1=80, line=dict(color="black")),
+        dict(type="circle", x0=50, y0=30, x1=70, y1=50, line=dict(color="black")),
+        dict(type="rect", x0=0, y0=18, x1=18, y1=62, line=dict(color="black")),
+        dict(type="rect", x0=102, y0=18, x1=120, y1=62, line=dict(color="black")),
+        dict(type="rect", x0=0, y0=30, x1=6, y1=50, line=dict(color="black")),
+        dict(type="rect", x0=114, y0=30, x1=120, y1=50, line=dict(color="black")),
+    ]
 
-    # Pitch outline
-    shapes.append(dict(type="rect", x0=0, y0=0, x1=120, y1=80, line=dict(color="black")))
-
-    # Halfway line
-    shapes.append(dict(type="line", x0=60, y0=0, x1=60, y1=80, line=dict(color="black")))
-
-    # Center circle
-    shapes.append(dict(type="circle", x0=50, y0=30, x1=70, y1=50, line=dict(color="black")))
-
-    # Left penalty box
-    shapes.append(dict(type="rect", x0=0, y0=18, x1=18, y1=62, line=dict(color="black")))
-
-    # Right penalty box
-    shapes.append(dict(type="rect", x0=102, y0=18, x1=120, y1=62, line=dict(color="black")))
-
-    # Left 6-yard box
-    shapes.append(dict(type="rect", x0=0, y0=30, x1=6, y1=50, line=dict(color="black")))
-
-    # Right 6-yard box
-    shapes.append(dict(type="rect", x0=114, y0=30, x1=120, y1=50, line=dict(color="black")))
-
-    # Left penalty spot
-    shapes.append(dict(type="circle", x0=11-0.5, y0=40-0.5, x1=11+0.5, y1=40+0.5, fillcolor="black"))
-
-    # Right penalty spot
-    shapes.append(dict(type="circle", x0=109-0.5, y0=40-0.5, x1=109+0.5, y1=40+0.5, fillcolor="black"))
-
-    # -----------------------------
-    # LAYOUT
-    # -----------------------------
     fig.update_layout(
         shapes=shapes,
-        xaxis=dict(range=[0, 120], showgrid=False, zeroline=False, visible=False),
-        yaxis=dict(range=[80, 0], showgrid=False, zeroline=False, visible=False),
+        xaxis=dict(range=[0, 120], visible=False),
+        yaxis=dict(range=[80, 0], visible=False),
         plot_bgcolor="white",
-        paper_bgcolor="white",
-        height=600,
-        showlegend=True
+        height=600
     )
 
     return fig

@@ -27,14 +27,14 @@ st.sidebar.header("Filters")
 
 competition = st.sidebar.selectbox(
     "Competition",
-    comps["competition_name"].unique()
+    comps["competition_name"].dropna().unique()
 )
 
 comp_df = comps[comps["competition_name"] == competition]
 
 season = st.sidebar.selectbox(
     "Season",
-    comp_df["season_name"].unique()
+    comp_df["season_name"].dropna().unique()
 )
 
 selected = comp_df[
@@ -51,13 +51,18 @@ season_id = selected["season_id"].iloc[0]
 try:
     matches = load_matches(comp_id, season_id)
 except Exception:
-    st.error("Failed to load matches")
+    st.error("Failed to load matches data")
     st.stop()
 
-match_labels = matches.apply(
-    lambda x: f"{x['home_team.home_team_name']} vs {x['away_team.away_team_name']}",
-    axis=1
-)
+# -----------------------------
+# FIX: HANDLE NESTED JSON
+# -----------------------------
+def get_match_label(row):
+    home = row.get("home_team", {}).get("home_team_name", "Unknown")
+    away = row.get("away_team", {}).get("away_team_name", "Unknown")
+    return f"{home} vs {away}"
+
+match_labels = matches.apply(get_match_label, axis=1)
 
 match_choice = st.sidebar.selectbox("Match", match_labels)
 
@@ -68,7 +73,7 @@ match_id = match_row["match_id"]
 # -----------------------------
 # DISPLAY MATCH TITLE
 # -----------------------------
-st.subheader(f"{match_choice}")
+st.subheader(match_choice)
 
 # -----------------------------
 # LOAD EVENTS (WITH SPINNER)
@@ -103,7 +108,7 @@ with tab1:
         st.metric("Expected Goals (xG)", round(xg, 2))
 
     with col2:
-        st.subheader("ℹ️ Info")
+        st.subheader("ℹ️ Match Info")
         st.write(f"Team: {team}")
         st.write(f"Match ID: {match_id}")
 

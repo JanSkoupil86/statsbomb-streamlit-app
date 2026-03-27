@@ -1,33 +1,74 @@
 from mplsoccer import Pitch
+import numpy as np
 
 def shot_map_two_teams(events, team1, team2, color1, color2):
     pitch = Pitch()
     fig, ax = pitch.draw()
 
-    # Team 1 shots
-    shots1 = events[
-        (events["type.name"] == "Shot") &
-        (events["team.name"] == team1) &
-        (events["location"].notnull())
-    ]
+    # -----------------------------
+    # HELPER FUNCTION
+    # -----------------------------
+    def plot_team_shots(team, color):
+        shots = events[
+            (events["type.name"] == "Shot") &
+            (events["team.name"] == team) &
+            (events["location"].notnull())
+        ]
 
-    x1 = shots1["location"].apply(lambda x: x[0])
-    y1 = shots1["location"].apply(lambda x: x[1])
+        if shots.empty:
+            return
 
-    pitch.scatter(x1, y1, ax=ax, color=color1, label=team1)
+        x = shots["location"].apply(lambda loc: loc[0])
+        y = shots["location"].apply(lambda loc: loc[1])
 
-    # Team 2 shots
-    shots2 = events[
-        (events["type.name"] == "Shot") &
-        (events["team.name"] == team2) &
-        (events["location"].notnull())
-    ]
+        # xG scaling (bubble size)
+        xg = shots.get("shot.statsbomb_xg", 0)
+        sizes = xg.fillna(0.01) * 1200  # scale factor
 
-    x2 = shots2["location"].apply(lambda x: x[0])
-    y2 = shots2["location"].apply(lambda x: x[1])
+        # Goal detection
+        goals = shots["shot.outcome.name"] == "Goal"
 
-    pitch.scatter(x2, y2, ax=ax, color=color2, label=team2)
+        # -----------------------------
+        # PLOT MISSES
+        # -----------------------------
+        pitch.scatter(
+            x[~goals],
+            y[~goals],
+            ax=ax,
+            s=sizes[~goals],
+            color=color,
+            alpha=0.4,
+            edgecolors="black",
+            linewidth=0.5,
+            label=f"{team} (Miss)"
+        )
 
-    ax.legend()
+        # -----------------------------
+        # PLOT GOALS
+        # -----------------------------
+        pitch.scatter(
+            x[goals],
+            y[goals],
+            ax=ax,
+            s=sizes[goals],
+            color=color,
+            edgecolors="gold",
+            linewidth=2,
+            marker="o",
+            label=f"{team} (Goal)"
+        )
+
+    # -----------------------------
+    # PLOT BOTH TEAMS
+    # -----------------------------
+    plot_team_shots(team1, color1)
+    plot_team_shots(team2, color2)
+
+    # -----------------------------
+    # LEGEND CLEANUP
+    # -----------------------------
+    handles, labels = ax.get_legend_handles_labels()
+    unique = dict(zip(labels, handles))
+    ax.legend(unique.values(), unique.keys(), loc="upper right")
 
     return fig
